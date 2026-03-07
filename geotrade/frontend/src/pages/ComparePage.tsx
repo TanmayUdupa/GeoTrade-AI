@@ -4,13 +4,11 @@ import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tool
 import type { CountryRiskScore } from "../types";
 import { useRiskStore } from "../store/riskStore";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8003";
-
-const AVAILABLE = ["CN","US","RU","IN","EU","JP","DE","FR","AU","BR","VN","MX","CA","KR","SA","TR","ID"];
+const AVAILABLE = ["USA","CHN","RUS","IND","DEU","JPN","GBR","KOR","MEX","BRA","VNM","SGP","FRA","AUS","CAN"];
 
 export function ComparePage() {
   const { risks } = useRiskStore();
-  const [selected, setSelected] = useState<string[]>(["CN","US","IN"]);
+  const [selected, setSelected] = useState<string[]>(["CHN","USA","IND"]);
   const [comparing, setComparing] = useState<CountryRiskScore[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,12 +24,11 @@ export function ComparePage() {
     if (selected.length < 2) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/compare?codes=${selected.join(",")}`);
-      const data = await res.json();
-      setComparing(data.countries || []);
+      // Fetch score data for selected countries
+      const baseData = selected.map(c => risks[c]).filter(Boolean) as CountryRiskScore[];
+      setComparing(baseData);
     } catch (e) {
-      // fallback to store data
-      setComparing(selected.map(c => risks[c]).filter(Boolean));
+      setComparing([]);
     }
     setLoading(false);
   };
@@ -117,6 +114,26 @@ export function ComparePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {comparing.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mt-6">
+          <h2 className="text-xs text-gray-400 tracking-widest mb-4">API DATA SOURCES</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <h3 className="text-green-400 font-bold mb-2">Current Risk</h3>
+              <p className="text-gray-400">From <code className="bg-gray-950 px-1">/score</code> endpoint</p>
+            </div>
+            <div>
+              <h3 className="text-green-400 font-bold mb-2">90-Day Forecast</h3>
+              <p className="text-gray-400">From <code className="bg-gray-950 px-1">/predict</code> endpoint</p>
+            </div>
+            <div>
+              <h3 className="text-green-400 font-bold mb-2">Alternatives</h3>
+              <p className="text-gray-400">From <code className="bg-gray-950 px-1">/recommend</code> endpoint</p>
             </div>
           </div>
         </div>

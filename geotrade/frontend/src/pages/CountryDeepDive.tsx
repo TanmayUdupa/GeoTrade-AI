@@ -1,12 +1,14 @@
 // frontend/src/pages/CountryDeepDive.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
-import type { CountryRiskScore, CountryForecast, SupplyChainRec } from "../types";
+import type { CountryRiskScore } from "../types";
+import { useRiskStore } from "../store/riskStore";
+import { usePrediction } from "../hooks/usePrediction";
+import { Alternative, AlternativesResponse } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8003";
-const PRED_BASE = import.meta.env.VITE_PRED_API_URL || "http://localhost:8004";
 
 interface Props {
   countryCode: string;
@@ -14,25 +16,21 @@ interface Props {
 }
 
 export function CountryDeepDive({ countryCode, onBack }: Props) {
-  const [risk, setRisk] = useState<CountryRiskScore | null>(null);
-  const [forecast, setForecast] = useState<CountryForecast | null>(null);
-  const [alternatives, setAlternatives] = useState<SupplyChainRec | null>(null);
-  const [horizon, setHorizon] = useState(30);
-  const [loading, setLoading] = useState(true);
+  const { risks } = useRiskStore();
+  const { prediction, loading: predLoading } = usePrediction(countryCode);
+  const [alternatives, setAlternatives] = useState<AlternativesResponse | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch(`${API_BASE}/risk/${countryCode}`).then(r => r.json()),
-      fetch(`${PRED_BASE}/forecast/${countryCode}?horizon=${horizon}`).then(r => r.json()),
-      fetch(`${PRED_BASE}/alternatives/${countryCode}`).then(r => r.json()),
-    ]).then(([r, f, a]) => {
-      setRisk(r);
-      setForecast(f);
-      setAlternatives(a);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [countryCode, horizon]);
+  const risk = risks[countryCode] || null;
+  const loading = !risk || predLoading;
+
+  // Optional: Fetch /recommend for alternatives
+  // useEffect(() => {
+  //   if (!countryCode) return;
+  //   fetch(`${API_BASE}/recommend?country_code=${countryCode}`)
+  //     .then(r => r.json())
+  //     .then(setAlternatives)
+  //     .catch(() => setAlternatives(null));
+  // }, [countryCode]);
 
   if (loading) {
     return (
@@ -87,27 +85,15 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
       {/* Forecast Chart */}
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs text-gray-400 tracking-widest">RISK FORECAST (LSTM + ARIMA ENSEMBLE)</h2>
-          <div className="flex gap-2">
-            {[30, 60, 90].map(h => (
-              <button
-                key={h}
-                onClick={() => setHorizon(h)}
-                className={`text-xs px-2 py-1 rounded border transition-colors ${
-                  horizon === h
-                    ? "border-green-600 text-green-400 bg-green-900/20"
-                    : "border-gray-700 text-gray-500 hover:text-gray-300"
-                }`}
-              >
-                {h}D
-              </button>
-            ))}
-          </div>
+          <h2 className="text-xs text-gray-400 tracking-widest">RISK FORECAST</h2>
+          {prediction?.model_confidence && (
+            <span className="text-xs text-gray-500">Confidence: {(prediction.model_confidence * 100).toFixed(0)}%</span>
+          )}
         </div>
-        {forecast ? (
+        {prediction && prediction.historical_scores && prediction.historical_scores.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={forecast.points} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
+              <AreaChart data={prediction.historical_scores} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="riskGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -120,7 +106,7 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => v.slice(5)}
-                  interval={Math.floor(forecast.points.length / 6)}
+                  interval={Math.floor((prediction.historical_scores.length || 1) / 6)}
                 />
                 <YAxis
                   domain={[0, 100]}
@@ -137,13 +123,7 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
                 <ReferenceLine y={55} stroke="#ef4444" strokeDasharray="3 3" />
                 <Area
                   type="monotone"
-                  dataKey="upper_bound"
-                  stroke="transparent"
-                  fill="#ef444420"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="risk_score"
+                  dataKey="score"
                   stroke="#ef4444"
                   strokeWidth={2}
                   fill="url(#riskGrad)"
@@ -152,11 +132,11 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
               </AreaChart>
             </ResponsiveContainer>
             <div className="mt-2 text-xs text-gray-600">
-              RMSE: {forecast.rmse} · MAE: {forecast.mae} · Model: {forecast.model_used.toUpperCase()}
+              Data points used: {prediction.data_points_used} · Confidence: {(prediction.model_confidence * 100).toFixed(0)}%
             </div>
           </>
         ) : (
-          <div className="py-8 text-center text-gray-600 text-xs">FORECAST UNAVAILABLE</div>
+          <div className="py-8 text-center text-gray-600 text-xs">FORECAST UNAVAILABLE - INSUFFICIENT DATA</div>
         )}
       </div>
 
@@ -167,7 +147,7 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
             SUPPLY CHAIN ALTERNATIVES · DISRUPTION PROB: {(alternatives.disruption_probability * 100).toFixed(0)}%
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {alternatives.alternatives.map(alt => (
+            {alternatives.alternatives.map((alt: Alternative) => (
               <div key={alt.country_code} className="bg-gray-950 border border-gray-800 rounded p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-bold text-white">{alt.country_name}</span>
@@ -180,7 +160,7 @@ export function CountryDeepDive({ countryCode, onBack }: Props) {
                   />
                 </div>
                 <ul className="text-xs text-gray-500 space-y-0.5">
-                  {alt.reasons.map(r => <li key={r}>▸ {r}</li>)}
+                  {alt.reasons.map((r: string) => <li key={r}>▸ {r}</li>)}
                 </ul>
               </div>
             ))}

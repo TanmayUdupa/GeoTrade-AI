@@ -61,3 +61,15 @@ export interface TradeAlert {
   risk_delta: number;
   created_at: string;
 }
+
+export interface Alternative {
+  country_code: string;
+  country_name: string;
+  alt_score: number;
+  reasons: string[];
+}
+
+export interface AlternativesResponse {
+  disruption_probability: number;
+  alternatives: Alternative[];
+}

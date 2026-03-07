@@ -2,20 +2,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorldRiskMap } from "./components/map/WorldRiskMap";
 import { RiskDashboard } from "./components/RiskDashboard";
-import { AlertFeed } from "./components/alerts/AlertFeed";
 import { CountryDeepDive } from "./pages/CountryDeepDive";
 import { ComparePage } from "./pages/ComparePage";
+import { ProductRoute } from "./pages/ProductRoute";
 import { NavBar } from "./components/layout/NavBar";
-import { useAlertSocket } from "./hooks/useAlertSocket";
 import { useRiskStore } from "./store/riskStore";
-import type { TradeAlert } from "./types";
 
-type Page = "dashboard" | "map" | "compare" | "country";
+type Page = "dashboard" | "map" | "compare" | "product" | "country";
 
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const { alerts, connected } = useAlertSocket();
   const { loadAllRisks } = useRiskStore();
 
   useEffect(() => {
@@ -34,8 +31,6 @@ export default function App() {
       <NavBar
         page={page}
         onNavigate={setPage}
-        wsConnected={connected}
-        alertCount={alerts.filter(a => a.severity === "CRITICAL").length}
       />
 
       <main className="pt-16">
@@ -46,6 +41,9 @@ export default function App() {
           <WorldRiskMap onCountrySelect={handleCountrySelect} />
         )}
         {page === "compare" && <ComparePage />}
+        {page === "product" && (
+          <ProductRoute onBack={() => setPage("dashboard")} />
+        )}
         {page === "country" && selectedCountry && (
           <CountryDeepDive
             countryCode={selectedCountry}
@@ -53,9 +51,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* Floating Alert Feed */}
-      <AlertFeed alerts={alerts} />
     </div>
   );
 }

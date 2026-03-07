@@ -2,17 +2,16 @@
 interface Props {
   page: string;
   onNavigate: (p: any) => void;
-  wsConnected: boolean;
-  alertCount: number;
 }
 
 const PAGES = [
   { id: "dashboard", label: "DASHBOARD" },
   { id: "map", label: "WORLD MAP" },
   { id: "compare", label: "COMPARE" },
+  { id: "product", label: "STRATEGY" },
 ];
 
-export function NavBar({ page, onNavigate, wsConnected, alertCount }: Props) {
+export function NavBar({ page, onNavigate }: Props) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800 h-16 flex items-center px-6 font-mono">
       {/* Logo */}
@@ -43,21 +42,6 @@ export function NavBar({ page, onNavigate, wsConnected, alertCount }: Props) {
 
       {/* Spacer */}
       <div className="flex-1" />
-
-      {/* Status Indicators */}
-      <div className="flex items-center gap-4 text-xs">
-        {alertCount > 0 && (
-          <span className="bg-red-900/40 text-red-400 border border-red-800 rounded px-2 py-1 animate-pulse">
-            ⚠ {alertCount} CRITICAL
-          </span>
-        )}
-        <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? "bg-green-500" : "bg-red-500"}`} />
-          <span className={wsConnected ? "text-green-500" : "text-red-500"}>
-            {wsConnected ? "LIVE" : "OFFLINE"}
-          </span>
-        </div>
-      </div>
     </nav>
   );
 }
