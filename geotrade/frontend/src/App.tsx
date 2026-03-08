@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import { useState, useEffect, useCallback } from "react";
 import { WorldRiskMap } from "./components/map/WorldRiskMap";
 import { RiskDashboard } from "./components/RiskDashboard";
@@ -8,6 +7,7 @@ import { ProductRoute } from "./pages/ProductRoute";
 import { NavBar } from "./components/layout/NavBar";
 import { useRiskStore } from "./store/riskStore";
 import Login from "./Login";
+import Register from "./Register";
 
 type Page = "dashboard" | "map" | "compare" | "product" | "country";
 
@@ -15,12 +15,13 @@ export default function App() {
   const [user, setUser] = useState<string | null>(
     localStorage.getItem("auth_user")
   );
+  const [authPage, setAuthPage] = useState<"login" | "register">("login");
   const [page, setPage] = useState<Page>("dashboard");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const { loadAllRisks } = useRiskStore();
 
   useEffect(() => {
-    if (!user) return; // don't load data if not logged in
+    if (!user) return;
     loadAllRisks();
     const interval = setInterval(loadAllRisks, 30_000);
     return () => clearInterval(interval);
@@ -34,19 +35,26 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem("auth_user");
     setUser(null);
+    setAuthPage("login");
   };
 
-  // 👇 Show login page if not authenticated
+  // ---- NOT LOGGED IN ----
   if (!user) {
-    return <Login onLogin={setUser} />;
+    if (authPage === "register") {
+      return <Register onBack={() => setAuthPage("login")} />;
+    }
+    return (
+      <Login
+        onLogin={setUser}
+        onRegister={() => setAuthPage("register")}
+      />
+    );
   }
 
+  // ---- LOGGED IN ----
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-mono">
-      <NavBar
-        page={page}
-        onNavigate={setPage}
-      />
+      <NavBar page={page} onNavigate={setPage} />
 
       {/* Logout button */}
       <button
