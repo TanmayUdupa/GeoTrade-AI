@@ -14,21 +14,29 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     setError("");
 
-    // Hardcoded users (temporary until backend login route is ready)
-    const users: Record<string, string> = {
-      ganesh: "ganesh123",
-      tanmay: "tanmay123",
-      mitra: "mitra123",
-    };
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        }
+      );
 
-    if (users[username] && users[username] === password) {
-      localStorage.setItem("auth_user", username);
-      onLogin(username);
-    } else {
-      setError("Invalid username or password");
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        localStorage.setItem("auth_user", data.username);
+        onLogin(data.username);
+      } else {
+        setError(data.message || "Invalid credentials");
+      }
+    } catch {
+      setError("Could not connect to server");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
