@@ -8,3 +8,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 )
+
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  redirect("/login");
+}
